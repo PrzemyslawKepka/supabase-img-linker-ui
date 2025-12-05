@@ -70,7 +70,10 @@ app_state = AppState()
 title = pn.pane.Markdown("# Supabase Image Linker UI")
 refresh_btn = pn.widgets.Button(name="Refresh Data", button_type="primary")
 status_filter = pn.widgets.RadioButtonGroup(
-    name="Status Filter", options=["All", "OK", "Error"], value="All", button_type="default"
+    name="Status Filter",
+    options=["All", "OK", "Error"],
+    value="All",
+    button_type="default",
 )
 
 # Table
@@ -103,7 +106,7 @@ table = pn.widgets.Tabulator(
                     "allowTruthy": True,
                     "tickElement": "<span style='color:green; font-weight:bold;'>OK</span>",
                     "crossElement": "<span style='color:red; font-weight:bold;'>Error</span>",
-                }
+                },
             },
         ]
     },
@@ -140,7 +143,7 @@ def load_and_display_data(event=None):
             filtered_df = filtered_df[filtered_df["status"] == True]
         elif status_filter.value == "Error":
             filtered_df = filtered_df[filtered_df["status"] == False]
-        
+
         table.value = filtered_df[display_cols].sort_values(by="id", ascending=True)
 
     if not table.value.empty:
@@ -149,6 +152,7 @@ def load_and_display_data(event=None):
     else:
         table.selection = []
         update_editor(None)
+
 
 # Define stylesheet for the status filter
 filter_stylesheet = """
@@ -197,12 +201,12 @@ def update_editor(event):
     # Preview
     img_url = full_row.get("image_url", None)
     status = full_row.get("status")
-    
-    if img_url and status: # status is now boolean True for OK
+
+    if img_url and status:  # status is now boolean True for OK
         current_image_preview.object = img_url
     else:
         current_image_preview.object = None
-        
+
     # Display status text for sidebar
     status_text = "OK" if status else "Error/Missing"
 
@@ -213,7 +217,7 @@ def update_editor(event):
     **Listing URL:** {full_row.get("listing_url", "None")}\n
     **Status:** {status_text}
     """
-    
+
     selected_property_info.object = info
 
     update_btn.disabled = False
@@ -224,6 +228,10 @@ def handle_upload(event):
         return
 
     update_btn.loading = True
+
+    # Declare global at the very start of the function
+    global file_input
+
     try:
         idx = table.selection[0]
         row = table.value.iloc[idx]
@@ -302,14 +310,29 @@ def handle_upload(event):
         # Update Database
         db.update_image_url(prop_id, final_url)
 
+        # We replace the file input widget entirely to force a clear on the client side
+        # Panel/Bokeh FileInput value clearing is sometimes sticky in the browser
+        new_file_input = pn.widgets.FileInput(accept=".jpg,.jpeg,.png,.webp")
+
+        # Replace in sidebar layout (index 8 is the container for file_input)
+        # sidebar[8] is a Column containing file_input
+        sidebar[8][0] = new_file_input
+
+        # Update reference
+        file_input = new_file_input
+
         pn.state.notifications.success("Image updated successfully!")
 
         # Clear inputs
-        file_input.value = None
         url_input.value = ""
 
         # Refresh data (or just update local row)
+        # Store current selection to restore it
+        current_selection = table.selection
         load_and_display_data()
+        # Restore selection if possible
+        if current_selection:
+            table.selection = current_selection
 
     except Exception as e:
         pn.state.notifications.error(f"Error updating image: {e}")
