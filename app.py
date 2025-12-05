@@ -21,15 +21,15 @@ except Exception as e:
 
 def get_image_status(url):
     if not url or pd.isna(url) or url == "":
-        return "Missing"
+        return False  # False for Error/Missing
     try:
         response = requests.head(url, timeout=3)
         if response.status_code == 200:
-            return "OK"
+            return True  # True for OK
         else:
-            return f"Error: {response.status_code}"
+            return False
     except Exception:
-        return "Error: Connection Failed"
+        return False
 
 
 def check_images_parallel(urls):
@@ -90,7 +90,18 @@ table = pn.widgets.Tabulator(
                 "formatter": "link",
                 "width": 450,
             },
-            {"title": "Status", "field": "status", "width": 100},
+            {
+                "title": "Status",
+                "field": "status",
+                "width": 100,
+                "formatter": "tickCross",
+                "formatterParams": {
+                    "allowEmpty": True,
+                    "allowTruthy": True,
+                    "tickElement": "<span style='color:green; font-weight:bold;'>OK</span>",
+                    "crossElement": "<span style='color:red; font-weight:bold;'>Error</span>",
+                }
+            },
         ]
     },
 )
@@ -144,21 +155,25 @@ def update_editor(event):
     prop_id = row["id"]
     full_row = app_state.df[app_state.df["id"] == prop_id].iloc[0]
 
+    # Preview
+    img_url = full_row.get("image_url", None)
+    status = full_row.get("status")
+    
+    if img_url and status: # status is now boolean True for OK
+        current_image_preview.object = img_url
+    else:
+        current_image_preview.object = None
+        
+    # Display status text for sidebar
+    status_text = "OK" if status else "Error/Missing"
+
     info = f"""
     **ID:** {full_row.get("id", "N/A")}  
     **Title:** {full_row.get("title", "N/A")}  
     **Current URL:** {full_row.get("image_url", "None")}  
     **Listing URL:** {full_row.get("listing_url", "None")}\n
-    **Status:** {full_row.get("status", "Unknown")}
+    **Status:** {status_text}
     """
-    selected_property_info.object = info
-
-    # Preview
-    img_url = full_row.get("image_url", None)
-    if img_url and full_row.get("status") == "OK":
-        current_image_preview.object = img_url
-    else:
-        current_image_preview.object = None
 
     update_btn.disabled = False
 
