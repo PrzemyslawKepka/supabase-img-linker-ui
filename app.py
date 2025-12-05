@@ -79,6 +79,7 @@ table = pn.widgets.Tabulator(
     pagination="remote",
     page_size=20,
     selectable=1,
+    show_index=False,
     configuration={
         "columns": [
             {"title": "ID", "field": "id", "width": 60},
