@@ -69,6 +69,9 @@ app_state = AppState()
 # UI Components
 title = pn.pane.Markdown("# Supabase Image Linker UI")
 refresh_btn = pn.widgets.Button(name="Refresh Data", button_type="primary")
+status_filter = pn.widgets.RadioButtonGroup(
+    name="Status Filter", options=["All", "OK", "Error"], value="All", button_type="default"
+)
 
 # Table
 # Use Tabulator configuration to limit column widths
@@ -131,10 +134,20 @@ def load_and_display_data(event=None):
     if df.empty:
         table.value = pd.DataFrame(columns=display_cols)
     else:
-        table.value = df[display_cols].sort_values(by="id", ascending=True)
+        # Apply filter
+        filtered_df = df.copy()
+        if status_filter.value == "OK":
+            filtered_df = filtered_df[filtered_df["status"] == True]
+        elif status_filter.value == "Error":
+            filtered_df = filtered_df[filtered_df["status"] == False]
+        
+        table.value = filtered_df[display_cols].sort_values(by="id", ascending=True)
 
-    if not df.empty:
+    if not table.value.empty:
         table.selection = [0]
+        update_editor(None)
+    else:
+        table.selection = []
         update_editor(None)
 
 
@@ -174,6 +187,8 @@ def update_editor(event):
     **Listing URL:** {full_row.get("listing_url", "None")}\n
     **Status:** {status_text}
     """
+    
+    selected_property_info.object = info
 
     update_btn.disabled = False
 
@@ -278,6 +293,7 @@ def handle_upload(event):
 
 # Bindings
 refresh_btn.on_click(load_and_display_data)
+status_filter.param.watch(load_and_display_data, "value")
 table.param.watch(update_editor, "selection")
 update_btn.on_click(handle_upload)
 
@@ -311,6 +327,8 @@ upload_type.param.watch(toggle_inputs, "value")
 main_content = pn.Column(
     title,
     "The table below shows the properties and their image status. Select a row to upload a new image.",
+    "**Filter by Status:**",
+    status_filter,
     table,
 )
 
