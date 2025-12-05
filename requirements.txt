@@ -1,0 +1,7 @@
+panel
+pandas
+supabase
+python-dotenv
+requests
+pillow
+
