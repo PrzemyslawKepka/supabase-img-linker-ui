@@ -83,9 +83,13 @@ table = pn.widgets.Tabulator(
         "columns": [
             {"title": "ID", "field": "id", "width": 60},
             {"title": "Title", "field": "title", "width": 200},
-            {"title": "Image URL", "field": "image_url", "width": 250, "formatter": "link"},
+            {
+                "title": "Image URL",
+                "field": "image_url",
+                "formatter": "link",
+                "width": 450,
+            },
             {"title": "Status", "field": "status", "width": 100},
-            {"title": "Listing URL", "field": "listing_url", "width": 200, "formatter": "link"},
         ]
     },
 )
@@ -109,8 +113,9 @@ update_btn = pn.widgets.Button(
 def load_and_display_data(event=None):
     df = app_state.load_data()
     # Select relevant columns for display
-    display_cols = ["id", "title", "image_url", "status", "listing_url"]
-    
+    # listing_url is needed for sidebar but not main table
+    display_cols = ["id", "title", "image_url", "status"]
+
     if df.empty:
         table.value = pd.DataFrame(columns=display_cols)
     else:
@@ -142,6 +147,7 @@ def update_editor(event):
     **ID:** {full_row.get("id", "N/A")}  
     **Title:** {full_row.get("title", "N/A")}  
     **Current URL:** {full_row.get("image_url", "None")}  
+    **Listing URL:** {full_row.get("listing_url", "None")}\n
     **Status:** {full_row.get("status", "Unknown")}
     """
     selected_property_info.object = info
