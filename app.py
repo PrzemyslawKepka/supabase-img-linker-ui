@@ -150,6 +150,41 @@ def load_and_display_data(event=None):
         table.selection = []
         update_editor(None)
 
+def update_filter_style(event):
+    # Add css classes to change color based on selection
+    # This is a bit of a hack because changing button styles dynamically for RadioButtonGroup isn't fully exposed
+    # properly in all themes, but stylesheets injection works.
+    pass
+
+status_filter.param.watch(update_filter_style, "value")
+
+# Define stylesheet for the status filter
+filter_stylesheet = """
+:host(.ok-active) .bk-btn-group .bk-btn:nth-child(2).bk-active {
+    background-color: green !important;
+    border-color: green !important;
+    color: white !important;
+}
+:host(.error-active) .bk-btn-group .bk-btn:nth-child(3).bk-active {
+    background-color: red !important;
+    border-color: red !important;
+    color: white !important;
+}
+"""
+
+# Apply stylesheet and attach watcher to toggle classes
+status_filter.stylesheets = [filter_stylesheet]
+
+def update_filter_css_class(event):
+    if event.new == "OK":
+        status_filter.css_classes = ["ok-active"]
+    elif event.new == "Error":
+        status_filter.css_classes = ["error-active"]
+    else:
+        status_filter.css_classes = []
+
+status_filter.param.watch(update_filter_css_class, "value")
+
 
 def update_editor(event):
     if not table.selection:
