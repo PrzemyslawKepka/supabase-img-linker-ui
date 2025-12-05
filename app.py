@@ -71,6 +71,7 @@ title = pn.pane.Markdown("# Supabase Image Linker UI")
 refresh_btn = pn.widgets.Button(name="Refresh Data", button_type="primary")
 
 # Table
+# Use Tabulator configuration to limit column widths
 table = pn.widgets.Tabulator(
     pd.DataFrame(),
     selection=[0] if not pd.DataFrame().empty else [],
@@ -78,6 +79,15 @@ table = pn.widgets.Tabulator(
     pagination="remote",
     page_size=20,
     selectable=1,
+    configuration={
+        "columns": [
+            {"title": "ID", "field": "id", "width": 60},
+            {"title": "Title", "field": "title", "width": 200},
+            {"title": "Image URL", "field": "image_url", "width": 250, "formatter": "link"},
+            {"title": "Status", "field": "status", "width": 100},
+            {"title": "Listing URL", "field": "listing_url", "width": 200, "formatter": "link"},
+        ]
+    },
 )
 
 # Editor Section
@@ -99,15 +109,13 @@ update_btn = pn.widgets.Button(
 def load_and_display_data(event=None):
     df = app_state.load_data()
     # Select relevant columns for display
-    display_cols = ["id", "title", "image_url", "status"]
-    # Add other useful cols if present
-    for col in ["listing_url", "price"]:
-        if col in df.columns:
-            display_cols.append(col)
+    display_cols = ["id", "title", "image_url", "status", "listing_url"]
+    
+    if df.empty:
+        table.value = pd.DataFrame(columns=display_cols)
+    else:
+        table.value = df[display_cols]
 
-    table.value = (
-        df[display_cols] if not df.empty else pd.DataFrame(columns=display_cols)
-    )
     if not df.empty:
         table.selection = [0]
         update_editor(None)
