@@ -248,7 +248,7 @@ def handle_upload(event):
 
 # Bindings
 refresh_btn.on_click(load_and_display_data)
-table.watcher(update_editor, ["selection"])
+table.param.watch(update_editor, "selection")
 update_btn.on_click(handle_upload)
 
 # Layout
