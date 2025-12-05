@@ -119,7 +119,7 @@ def load_and_display_data(event=None):
     if df.empty:
         table.value = pd.DataFrame(columns=display_cols)
     else:
-        table.value = df[display_cols]
+        table.value = df[display_cols].sort_values(by="id", ascending=True)
 
     if not df.empty:
         table.selection = [0]
