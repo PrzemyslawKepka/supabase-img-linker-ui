@@ -1,395 +1,71 @@
-import os
-from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urlparse
+"""
+Supabase Image Linker UI - Main Application
+A Panel web application for managing property images with Supabase integration.
 
-import pandas as pd
-import panel as pn
-import requests
-
-from db_manager import Database
-
-# Initialize Panel extension
-pn.extension("tabulator", notifications=True)
-
-# Initialize Database
-try:
-    db = Database()
-except Exception as e:
-    pn.pane.Markdown(f"## Error initializing database: {e}").servable()
-    raise e
-
-
-def get_image_status(url):
-    if not url or pd.isna(url) or url == "":
-        return False  # False for Error/Missing
-    try:
-        response = requests.head(url, timeout=3)
-        if response.status_code == 200:
-            return True  # True for OK
-        else:
-            return False
-    except Exception:
-        return False
-
-
-def check_images_parallel(urls):
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        results = list(executor.map(get_image_status, urls))
-    return results
-
-
-# State
-class AppState:
-    def __init__(self):
-        self.df = pd.DataFrame()
-        self.selected_index = None
-
-    def load_data(self):
-        try:
-            self.df = db.fetch_properties()
-            # Ensure columns exist
-            if "image_url" not in self.df.columns:
-                self.df["image_url"] = ""
-
-            # Add status column
-            # We'll do this dynamically or on button press to avoid long load times?
-            # The requirement says "it will display... and it will show whether the image is displayed correctly"
-            # So we should check.
-            pn.state.notifications.info("Checking image statuses...", duration=2000)
-            statuses = check_images_parallel(self.df["image_url"].tolist())
-            self.df["status"] = statuses
-            return self.df
-        except Exception as e:
-            pn.state.notifications.error(f"Failed to load data: {e}")
-            return pd.DataFrame()
-
-
-app_state = AppState()
-
-# UI Components
-title = pn.pane.Markdown("# Supabase Image Linker UI")
-refresh_btn = pn.widgets.Button(name="Refresh Data", button_type="primary")
-status_filter = pn.widgets.RadioButtonGroup(
-    name="Status Filter",
-    options=["All", "OK", "Error"],
-    value="All",
-    button_type="default",
-)
-
-# Table
-# Use Tabulator configuration to limit column widths
-table = pn.widgets.Tabulator(
-    pd.DataFrame(),
-    selection=[0] if not pd.DataFrame().empty else [],
-    disabled=True,
-    pagination="remote",
-    page_size=20,
-    selectable=1,
-    show_index=False,
-    configuration={
-        "columns": [
-            {"title": "ID", "field": "id", "width": 60},
-            {"title": "Title", "field": "title", "width": 200},
-            {
-                "title": "Image URL",
-                "field": "image_url",
-                "formatter": "link",
-                "width": 450,
-            },
-            {
-                "title": "Status",
-                "field": "status",
-                "width": 100,
-                "formatter": "tickCross",
-                "formatterParams": {
-                    "allowEmpty": True,
-                    "allowTruthy": True,
-                    "tickElement": "<span style='color:green; font-weight:bold;'>OK</span>",
-                    "crossElement": "<span style='color:red; font-weight:bold;'>Error</span>",
-                },
-            },
-        ]
-    },
-)
-
-# Editor Section
-editor_title = pn.pane.Markdown("## Edit Image")
-selected_property_info = pn.pane.Markdown("Select a property to edit.")
-current_image_preview = pn.pane.Image(width=300, height=200, object=None)
-
-upload_type = pn.widgets.RadioButtonGroup(
-    options=["Upload File", "Image URL"], value="Upload File"
-)
-file_input = pn.widgets.FileInput(accept=".jpg,.jpeg,.png,.webp")
-url_input = pn.widgets.TextInput(placeholder="Enter image URL here")
-update_btn = pn.widgets.Button(
-    name="Update Image", button_type="success", disabled=True
-)
-
-
-# Logic
-def load_and_display_data(event=None):
-    df = app_state.load_data()
-    # Select relevant columns for display
-    # listing_url is needed for sidebar but not main table
-    display_cols = ["id", "title", "image_url", "status"]
-
-    if df.empty:
-        table.value = pd.DataFrame(columns=display_cols)
-    else:
-        # Apply filter
-        filtered_df = df.copy()
-        if status_filter.value == "OK":
-            filtered_df = filtered_df[filtered_df["status"] == True]
-        elif status_filter.value == "Error":
-            filtered_df = filtered_df[filtered_df["status"] == False]
-
-        table.value = filtered_df[display_cols].sort_values(by="id", ascending=True)
-
-    if not table.value.empty:
-        table.selection = [0]
-        update_editor(None)
-    else:
-        table.selection = []
-        update_editor(None)
-
-
-# Define stylesheet for the status filter
-filter_stylesheet = """
-/* OK Button (2nd child) */
-.bk-btn-group .bk-btn:nth-child(2) {
-    color: green !important;
-    border-color: green !important;
-}
-.bk-btn-group .bk-btn:nth-child(2).bk-active {
-    background-color: green !important;
-    color: white !important;
-}
-
-/* Error Button (3rd child) */
-.bk-btn-group .bk-btn:nth-child(3) {
-    color: red !important;
-    border-color: red !important;
-}
-.bk-btn-group .bk-btn:nth-child(3).bk-active {
-    background-color: red !important;
-    color: white !important;
-}
+This is the main entry point that orchestrates all modules.
 """
 
-# Apply stylesheet (no dynamic class toggling needed)
-status_filter.stylesheets = [filter_stylesheet]
+import panel as pn
+
+from constants.config import HEADER_BACKGROUND_COLOR
+from services.data_service import DataService
+from services.database_service import DatabaseService
+from services.image_service import ImageService
+from ui.callbacks import UICallbacks
+from ui.components import UIComponents
 
 
-def update_editor(event):
-    if not table.selection:
-        selected_property_info.object = "Select a property to edit."
-        current_image_preview.object = None
-        update_btn.disabled = True
-        return
-
-    idx = table.selection[0]
-    # Tabulator selection index maps to the dataframe index if not sorted/filtered
-    # But safely, let's get the row from the value
-    row = table.value.iloc[idx]
-
-    # Find the full row in the main dataframe to get all details if needed
-    # assuming 'id' is unique
-    prop_id = row["id"]
-    full_row = app_state.df[app_state.df["id"] == prop_id].iloc[0]
-
-    # Preview
-    img_url = full_row.get("image_url", None)
-    status = full_row.get("status")
-
-    if img_url and status:  # status is now boolean True for OK
-        current_image_preview.object = img_url
-    else:
-        current_image_preview.object = None
-
-    # Display status text for sidebar
-    status_text = "OK" if status else "Error/Missing"
-
-    info = f"""
-    **ID:** {full_row.get("id", "N/A")}  
-    **Title:** {full_row.get("title", "N/A")}  
-    **Current URL:** {full_row.get("image_url", "None")}  
-    **Listing URL:** {full_row.get("listing_url", "None")}\n
-    **Status:** {status_text}
+def initialize_app():
     """
+    Initialize the Panel application with all required services.
 
-    selected_property_info.object = info
+    Returns:
+        Tuple of (template, callbacks) for the app
+    """
+    # Initialize Panel extension
+    pn.extension("tabulator", notifications=True)
 
-    update_btn.disabled = False
-
-
-def handle_upload(event):
-    if not table.selection:
-        return
-
-    update_btn.loading = True
-
-    # Declare global at the very start of the function
-    global file_input
-
+    # Initialize services
     try:
-        idx = table.selection[0]
-        row = table.value.iloc[idx]
-        prop_id = row["id"]
-        prop_title = row["title"]
-
-        image_data = None
-        ext = ""
-        content_type = "image/jpeg"  # Default
-
-        if upload_type.value == "Upload File":
-            if file_input.value is None:
-                pn.state.notifications.error("Please select a file.")
-                update_btn.loading = False
-                return
-            image_data = file_input.value
-            filename = file_input.filename
-            ext = os.path.splitext(filename)[1].lower()
-            # Simple content type guess
-            if ext == ".png":
-                content_type = "image/png"
-            elif ext == ".webp":
-                content_type = "image/webp"
-
-        else:  # Image URL
-            url = url_input.value
-            if not url:
-                pn.state.notifications.error("Please enter a URL.")
-                update_btn.loading = False
-                return
-            try:
-                res = requests.get(url)
-                res.raise_for_status()
-                image_data = res.content
-                # Try to guess extension from url or header
-                path = urlparse(url).path
-                ext = os.path.splitext(path)[1].lower()
-                if not ext:
-                    ext = ".jpg"  # Fallback
-                content_type = res.headers.get("Content-Type", "image/jpeg")
-            except Exception as e:
-                pn.state.notifications.error(f"Failed to download image: {e}")
-                update_btn.loading = False
-                return
-
-        # Sanitize title for filename
-        safe_title = (
-            "".join([c for c in prop_title if c.isalnum() or c in (" ", "-", "_")])
-            .strip()
-            .replace(" ", "_")
-        )
-        # Construct new filename: id_title.ext
-        new_filename = f"{prop_id}_{safe_title}{ext}"
-
-        # Upload to Supabase
-        db.upload_image(image_data, new_filename, content_type)
-
-        # Get Signed URL (10 years)
-        signed_url_resp = db.get_signed_url(new_filename, years=10)
-        # signed_url_resp is a dict with 'signedURL' key usually?
-        # The supabase-py client returns a dict or object depending on version.
-        # Checking db_manager: create_signed_url returns dict with 'signedURL' usually.
-        # Let's assume it returns the dict.
-        if isinstance(signed_url_resp, dict) and "signedURL" in signed_url_resp:
-            final_url = signed_url_resp["signedURL"]
-        elif hasattr(signed_url_resp, "signedURL"):
-            final_url = signed_url_resp.signedURL
-        else:
-            # Sometimes it returns the URL string directly? No, usually dict.
-            # Let's check return type of create_signed_url in library if possible or safeguard.
-            # Assuming dict `{'signedURL': '...'}` or similar.
-            final_url = signed_url_resp[
-                "signedURL"
-            ]  # This is the standard for storage3
-
-        # Update Database
-        db.update_image_url(prop_id, final_url)
-
-        # We replace the file input widget entirely to force a clear on the client side
-        # Panel/Bokeh FileInput value clearing is sometimes sticky in the browser
-        new_file_input = pn.widgets.FileInput(accept=".jpg,.jpeg,.png,.webp")
-
-        # Replace in sidebar layout (index 8 is the container for file_input)
-        # sidebar[8] is a Column containing file_input
-        sidebar[8][0] = new_file_input
-
-        # Update reference
-        file_input = new_file_input
-
-        pn.state.notifications.success("Image updated successfully!")
-
-        # Clear inputs
-        url_input.value = ""
-
-        # Refresh data (or just update local row)
-        # Store current selection to restore it
-        current_selection = table.selection
-        load_and_display_data()
-        # Restore selection if possible
-        if current_selection:
-            table.selection = current_selection
-
+        db_service = DatabaseService()
+        data_service = DataService(db_service)
+        image_service = ImageService(db_service)
     except Exception as e:
-        pn.state.notifications.error(f"Error updating image: {e}")
-    finally:
-        update_btn.loading = False
+        pn.pane.Markdown(f"## Error initializing services: {e}").servable()
+        raise e
+
+    # Initialize UI components
+    ui = UIComponents()
+
+    # Initialize callbacks
+    callbacks = UICallbacks(ui, data_service, image_service)
+
+    # Create layouts
+    sidebar = ui.create_sidebar()
+    main_content = ui.create_main_content()
+
+    # Set sidebar reference in callbacks for dynamic updates
+    callbacks.set_sidebar(sidebar)
+
+    # Bind all callbacks
+    callbacks.bind_callbacks()
+
+    # Create template
+    template = pn.template.BootstrapTemplate(
+        title="Supabase Image Linker",
+        sidebar=[sidebar],
+        main=[main_content],
+        header_background=HEADER_BACKGROUND_COLOR,
+    )
+
+    return template, callbacks
 
 
-# Bindings
-refresh_btn.on_click(load_and_display_data)
-status_filter.param.watch(load_and_display_data, "value")
-table.param.watch(update_editor, "selection")
-update_btn.on_click(handle_upload)
+# Initialize and run the application
+template, callbacks = initialize_app()
 
-# Layout
-sidebar = pn.Column(
-    "### Actions",
-    refresh_btn,
-    "### Editor",
-    selected_property_info,
-    current_image_preview,
-    pn.layout.Divider(),
-    "**New Image Source:**",
-    upload_type,
-    pn.Column(file_input, visible=True),  # We'll toggle visibility
-    pn.Column(url_input, visible=False),
-    update_btn,
-)
+# Load initial data on app start
+pn.state.onload(callbacks.load_and_display_data)
 
-
-def toggle_inputs(event):
-    if upload_type.value == "Upload File":
-        sidebar[8].visible = True
-        sidebar[9].visible = False
-    else:
-        sidebar[8].visible = False
-        sidebar[9].visible = True
-
-
-upload_type.param.watch(toggle_inputs, "value")
-
-main_content = pn.Column(
-    title,
-    "The table below shows the properties and their image status. Select a row to upload a new image.",
-    "**Filter by Status:**",
-    status_filter,
-    table,
-)
-
-template = pn.template.BootstrapTemplate(
-    title="Supabase Image Linker",
-    sidebar=[sidebar],
-    main=[main_content],
-    header_background="#3A7D7E",
-)
-
-# Initial Load
-# We defer it to onload so the UI renders first
-pn.state.onload(load_and_display_data)
-
+# Make template servable
 template.servable()
