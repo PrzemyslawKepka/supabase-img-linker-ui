@@ -2,6 +2,20 @@
 
 A general-purpose Panel web application for managing images in any Supabase database table. Upload, replace, and manage images for your database records with automatic optimization and validation.
 
+## Problem Definition
+
+A common approach for managing images in an application is to use a database table with a **dedicated column for the image address (URL)**, which is later referenced throughout the app. The images may be stored in a dedicated storage solution (recommended approach), or theoretically could come from a third-party source (not recommended). In any case, linking and managing URLs in the table comes with several **pain points**:
+* Images have to be uploaded to storage and then **manually linked** in the table - requiring manual work or custom scripts
+* There's a need to **monitor the validity of the links** - we don't want users to be the first to discover broken links and blank images
+
+Supabase offers a service called `Storage`, where you can store various files, providing a **unified solution** for both data storage + image storage. This is very handy, but the files still have to be uploaded somehow, and we want to **monitor the validity of all existing links**, including those that were uploaded previously.
+
+## Solution
+
+To facilitate image linking between storage and the database, a **visual interface** is even more helpful. While the upload still requires user action, the file upload process and URL insertion are **performed automatically**, and we can **easily monitor the status** of all images.
+
+![App interface](images/app_ui.png)
+
 ## ✨ Key Features
 
 - 🎯 **Universal & Configurable**: Works with any Supabase table - just configure your column names
