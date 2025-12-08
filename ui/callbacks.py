@@ -199,7 +199,8 @@ class UICallbacks:
     def _refresh_after_upload(self):
         """Refresh data after upload maintaining selection."""
         current_selection = self.ui.table.selection
-        self.load_and_display_data()
+        # Force reload by passing a dummy event (event is not None triggers reload)
+        self.load_and_display_data(event=True)
 
         # Restore selection if possible
         if current_selection:
