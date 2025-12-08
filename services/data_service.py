@@ -72,9 +72,9 @@ class DataService:
         filtered_df = self.df.copy()
 
         if status_filter == "OK":
-            filtered_df = filtered_df[filtered_df["status"] == True]
+            filtered_df = filtered_df[filtered_df["status"]]
         elif status_filter == "Error":
-            filtered_df = filtered_df[filtered_df["status"] == False]
+            filtered_df = filtered_df[~filtered_df["status"]]
 
         return filtered_df
 
