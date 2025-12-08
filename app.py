@@ -1,8 +1,10 @@
 """
 Supabase Image Linker UI - Main Application
-A Panel web application for managing property images with Supabase integration.
+A Panel web application for managing database record images with Supabase integration.
 
 This is the main entry point that orchestrates all modules.
+The application is fully configurable via constants/config.py - you can use it
+with any Supabase table by adjusting the configuration settings.
 """
 
 import panel as pn

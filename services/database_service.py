@@ -6,7 +6,14 @@ Handles all interactions with Supabase database and storage.
 import pandas as pd
 from supabase import Client, create_client
 
-from constants.config import DATA_TABLE, STORAGE_BUCKET, SUPABASE_KEY, SUPABASE_URL
+from constants.config import (
+    DATA_TABLE,
+    ID_COLUMN,
+    IMAGE_URL_COLUMN,
+    STORAGE_BUCKET,
+    SUPABASE_KEY,
+    SUPABASE_URL,
+)
 
 
 class DatabaseService:
@@ -22,28 +29,30 @@ class DatabaseService:
         self.client: Client = create_client(self.url, self.key)
         self.data_table = DATA_TABLE
         self.bucket_name = STORAGE_BUCKET
+        self.id_column = ID_COLUMN
+        self.image_url_column = IMAGE_URL_COLUMN
 
-    def fetch_properties(self) -> pd.DataFrame:
+    def fetch_records(self) -> pd.DataFrame:
         """
-        Fetch all properties from the database.
+        Fetch all records from the configured database table.
 
         Returns:
-            DataFrame containing all property records
+            DataFrame containing all records
         """
         response = self.client.table(self.data_table).select("*").execute()
         return pd.DataFrame(response.data)
 
-    def update_image_url(self, property_id: int, image_url: str) -> None:
+    def update_image_url(self, record_id: int, image_url: str) -> None:
         """
-        Update the image_url for a specific property.
+        Update the image URL for a specific record.
 
         Args:
-            property_id: The property ID to update
+            record_id: The record ID to update
             image_url: The new image URL
         """
-        self.client.table(self.data_table).update({"image_url": image_url}).eq(
-            "id", property_id
-        ).execute()
+        self.client.table(self.data_table).update(
+            {self.image_url_column: image_url}
+        ).eq(self.id_column, record_id).execute()
 
     def upload_image(
         self, file_data: bytes, file_name: str, content_type: str = "image/jpeg"

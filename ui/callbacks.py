@@ -5,6 +5,13 @@ Contains all event handlers and callback functions for UI interactions.
 
 import panel as pn
 
+from constants.config import (
+    ADDITIONAL_DISPLAY_COLUMNS,
+    ENTITY_LABEL,
+    ID_COLUMN,
+    IMAGE_URL_COLUMN,
+    TITLE_COLUMN,
+)
 from services.data_service import DataService
 from services.image_service import ImageService
 from ui.components import UIComponents
@@ -28,6 +35,12 @@ class UICallbacks:
         self.data_service = data_service
         self.image_service = image_service
         self.sidebar = None  # Will be set after layout creation
+
+        # Store column configuration
+        self.id_column = ID_COLUMN
+        self.title_column = TITLE_COLUMN
+        self.image_url_column = IMAGE_URL_COLUMN
+        self.additional_columns = ADDITIONAL_DISPLAY_COLUMNS
 
     def set_sidebar(self, sidebar: pn.Column):
         """
@@ -95,7 +108,9 @@ class UICallbacks:
             event: Panel event from table selection
         """
         if not self.ui.table.selection:
-            self.ui.selected_property_info.object = "Select a property to edit."
+            self.ui.selected_record_info.object = (
+                f"Select a {ENTITY_LABEL.lower()} to edit."
+            )
             self.ui.current_image_preview.object = None
             self.ui.update_btn.disabled = True
             return
@@ -104,11 +119,11 @@ class UICallbacks:
         row = self.ui.table.value.iloc[idx]
 
         # Get full row data from data service
-        prop_id = row["id"]
-        full_row = self.data_service.get_property_by_id(prop_id)
+        record_id = row[self.id_column]
+        full_row = self.data_service.get_record_by_id(record_id)
 
         # Update image preview
-        img_url = full_row.get("image_url", None)
+        img_url = full_row.get(self.image_url_column, None)
         status = full_row.get("status")
 
         if img_url and status:
@@ -116,16 +131,30 @@ class UICallbacks:
         else:
             self.ui.current_image_preview.object = None
 
-        # Update info display
+        # Build info display dynamically
+        id_label = (
+            self.id_column.upper()
+            if len(self.id_column) <= 3
+            else self.id_column.replace("_", " ").title()
+        )
+        title_label = self.title_column.replace("_", " ").title()
+        image_url_label = self.image_url_column.replace("_", " ").title()
+
         status_text = "OK" if status else "Error/Missing"
         info = f"""
-        **ID:** {full_row.get("id", "N/A")}  
-        **Title:** {full_row.get("title", "N/A")}  
-        **Current URL:** {full_row.get("image_url", "None")}  
-        **Listing URL:** {full_row.get("listing_url", "None")}\n
-        **Status:** {status_text}
+        **{id_label}:** {full_row.get(self.id_column, "N/A")}  
+        **{title_label}:** {full_row.get(self.title_column, "N/A")}  
+        **Current {image_url_label}:** {full_row.get(self.image_url_column, "None")}  
         """
-        self.ui.selected_property_info.object = info
+
+        # Add additional columns if configured
+        for col in self.additional_columns:
+            col_label = col.replace("_", " ").title()
+            info += f"**{col_label}:** {full_row.get(col, 'None')}\n"
+
+        info += f"\n**Status:** {status_text}"
+
+        self.ui.selected_record_info.object = info
 
         # Enable update button
         self.ui.update_btn.disabled = False
@@ -143,17 +172,17 @@ class UICallbacks:
         self.ui.update_btn.loading = True
 
         try:
-            # Get selected property info
+            # Get selected record info
             idx = self.ui.table.selection[0]
             row = self.ui.table.value.iloc[idx]
-            prop_id = row["id"]
-            prop_title = row["title"]
+            record_id = row[self.id_column]
+            record_title = row[self.title_column]
 
             # Process upload based on type
             if self.ui.upload_type.value == "Upload File":
-                self._handle_file_upload(prop_id, prop_title)
+                self._handle_file_upload(record_id, record_title)
             else:
-                self._handle_url_upload(prop_id, prop_title)
+                self._handle_url_upload(record_id, record_title)
 
             # Success notification
             pn.state.notifications.success("Image updated successfully!")
@@ -167,22 +196,25 @@ class UICallbacks:
         finally:
             self.ui.update_btn.loading = False
 
-    def _handle_file_upload(self, prop_id: int, prop_title: str):
+    def _handle_file_upload(self, record_id: int, record_title: str):
         """Handle file upload."""
         if self.ui.file_input.value is None:
             raise ValueError("Please select a file.")
 
         self.image_service.process_file_upload(
-            prop_id, prop_title, self.ui.file_input.value, self.ui.file_input.filename
+            record_id,
+            record_title,
+            self.ui.file_input.value,
+            self.ui.file_input.filename,
         )
 
-    def _handle_url_upload(self, prop_id: int, prop_title: str):
+    def _handle_url_upload(self, record_id: int, record_title: str):
         """Handle URL upload."""
         if not self.ui.url_input.value:
             raise ValueError("Please enter a URL.")
 
         self.image_service.process_url_upload(
-            prop_id, prop_title, self.ui.url_input.value
+            record_id, record_title, self.ui.url_input.value
         )
 
     def _clear_inputs(self):

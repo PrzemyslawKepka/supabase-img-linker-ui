@@ -6,6 +6,11 @@ Manages application data state and filtering operations.
 import pandas as pd
 import panel as pn
 
+from constants.config import (
+    ID_COLUMN,
+    IMAGE_URL_COLUMN,
+    TITLE_COLUMN,
+)
 from services.database_service import DatabaseService
 from utils.image_validator import check_images_parallel
 
@@ -22,24 +27,27 @@ class DataService:
         """
         self.db_service = db_service
         self.df = pd.DataFrame()
+        self.id_column = ID_COLUMN
+        self.image_url_column = IMAGE_URL_COLUMN
+        self.title_column = TITLE_COLUMN
 
     def load_data(self) -> pd.DataFrame:
         """
-        Load properties data from database and check image statuses.
+        Load data from database and check image statuses.
 
         Returns:
-            DataFrame with properties and their image statuses
+            DataFrame with records and their image statuses
         """
         try:
-            self.df = self.db_service.fetch_properties()
+            self.df = self.db_service.fetch_records()
 
             # Ensure image_url column exists
-            if "image_url" not in self.df.columns:
-                self.df["image_url"] = ""
+            if self.image_url_column not in self.df.columns:
+                self.df[self.image_url_column] = ""
 
             # Check image statuses in parallel
             pn.state.notifications.info("Checking image statuses...", duration=2000)
-            statuses = check_images_parallel(self.df["image_url"].tolist())
+            statuses = check_images_parallel(self.df[self.image_url_column].tolist())
             self.df["status"] = statuses
 
             return self.df
@@ -80,32 +88,37 @@ class DataService:
         Returns:
             DataFrame with display columns only
         """
-        display_cols = ["id", "title", "image_url", "status"]
+        display_cols = [
+            self.id_column,
+            self.title_column,
+            self.image_url_column,
+            "status",
+        ]
         if df.empty:
             return pd.DataFrame(columns=display_cols)
-        return df[display_cols].sort_values(by="id", ascending=True)
+        return df[display_cols].sort_values(by=self.id_column, ascending=True)
 
-    def get_property_by_id(self, property_id: int) -> pd.Series:
+    def get_record_by_id(self, record_id: int) -> pd.Series:
         """
-        Get a specific property by its ID.
+        Get a specific record by its ID.
 
         Args:
-            property_id: The property ID to retrieve
+            record_id: The record ID to retrieve
 
         Returns:
-            Series containing the property data
+            Series containing the record data
         """
-        return self.df[self.df["id"] == property_id].iloc[0]
+        return self.df[self.df[self.id_column] == record_id].iloc[0]
 
-    def refresh_property_status(self, property_id: int) -> None:
+    def refresh_record_status(self, record_id: int) -> None:
         """
-        Refresh the image status for a specific property.
+        Refresh the image status for a specific record.
 
         Args:
-            property_id: The property ID to refresh
+            record_id: The record ID to refresh
         """
-        idx = self.df[self.df["id"] == property_id].index[0]
-        url = self.df.loc[idx, "image_url"]
+        idx = self.df[self.df[self.id_column] == record_id].index[0]
+        url = self.df.loc[idx, self.image_url_column]
 
         from utils.image_validator import get_image_status
 

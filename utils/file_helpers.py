@@ -21,20 +21,20 @@ def sanitize_filename(text: str) -> str:
     return safe_text.strip().replace(" ", "_")
 
 
-def create_property_filename(property_id: int, title: str, extension: str) -> str:
+def create_record_filename(record_id: int, title: str, extension: str) -> str:
     """
-    Create a standardized filename for property images.
+    Create a standardized filename for record images.
 
     Args:
-        property_id: The property ID
-        title: The property title
+        record_id: The record ID
+        title: The record title/name
         extension: File extension (should include the dot, e.g., '.jpg')
 
     Returns:
         Formatted filename: {id}_{sanitized_title}{extension}
     """
     safe_title = sanitize_filename(title)
-    return f"{property_id}_{safe_title}{extension}"
+    return f"{record_id}_{safe_title}{extension}"
 
 
 def get_extension_from_url(url: str, default: str = ".jpg") -> str:

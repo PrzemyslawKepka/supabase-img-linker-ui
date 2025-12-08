@@ -8,7 +8,7 @@ import requests
 from constants.config import ENABLE_IMAGE_OPTIMIZATION, SIGNED_URL_EXPIRY_YEARS
 from services.database_service import DatabaseService
 from utils.file_helpers import (
-    create_property_filename,
+    create_record_filename,
     get_content_type,
     get_extension_from_url,
 )
@@ -29,15 +29,15 @@ class ImageService:
         self.optimizer = ImageOptimizer()
 
     def process_file_upload(
-        self, property_id: int, property_title: str, file_data: bytes, filename: str
+        self, record_id: int, record_title: str, file_data: bytes, filename: str
     ) -> str:
         """
         Process a file upload and return the signed URL.
         Automatically optimizes images before uploading.
 
         Args:
-            property_id: Property ID for the image
-            property_title: Property title for filename generation
+            record_id: Record ID for the image
+            record_title: Record title for filename generation
             file_data: Binary file data
             filename: Original filename
 
@@ -87,7 +87,7 @@ class ImageService:
         content_type = get_content_type(ext)
 
         # Create standardized filename
-        new_filename = create_property_filename(property_id, property_title, ext)
+        new_filename = create_record_filename(record_id, record_title, ext)
 
         # Upload to storage
         self.db_service.upload_image(file_data, new_filename, content_type)
@@ -96,20 +96,20 @@ class ImageService:
         signed_url = self._get_signed_url(new_filename)
 
         # Update database
-        self.db_service.update_image_url(property_id, signed_url)
+        self.db_service.update_image_url(record_id, signed_url)
 
         return signed_url
 
     def process_url_upload(
-        self, property_id: int, property_title: str, image_url: str
+        self, record_id: int, record_title: str, image_url: str
     ) -> str:
         """
         Download an image from URL, upload it, and return the signed URL.
         Automatically optimizes images before uploading.
 
         Args:
-            property_id: Property ID for the image
-            property_title: Property title for filename generation
+            record_id: Record ID for the image
+            record_title: Record title for filename generation
             image_url: URL of the image to download
 
         Returns:
@@ -166,7 +166,7 @@ class ImageService:
                 content_type = response.headers.get("Content-Type", "image/jpeg")
 
             # Create standardized filename
-            new_filename = create_property_filename(property_id, property_title, ext)
+            new_filename = create_record_filename(record_id, record_title, ext)
 
             # Upload to storage
             self.db_service.upload_image(image_data, new_filename, content_type)
@@ -175,7 +175,7 @@ class ImageService:
             signed_url = self._get_signed_url(new_filename)
 
             # Update database
-            self.db_service.update_image_url(property_id, signed_url)
+            self.db_service.update_image_url(record_id, signed_url)
 
             return signed_url
 

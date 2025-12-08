@@ -1,6 +1,9 @@
 """
 Configuration module for Supabase Image Linker UI.
 Centralizes all configuration settings and constants.
+
+This file defines the table and column mappings for the application.
+Customize these settings to work with any Supabase table structure.
 """
 
 import os
@@ -14,7 +17,32 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STORAGE_BUCKET = os.getenv("STORAGE_BUCKET", "property-images")
+
+# ==============================================================================
+# TABLE CONFIGURATION - CUSTOMIZE FOR YOUR USE CASE
+# ==============================================================================
+
+# Table name in Supabase
 DATA_TABLE = "properties_CM_pub"
+
+# Column name for the unique identifier (e.g., "id", "user_id", "product_id")
+ID_COLUMN = "id"
+
+# Column name for the image URL field (e.g., "image_url", "avatar_url", "photo_url")
+IMAGE_URL_COLUMN = "image_url"
+
+# Column name for a descriptive title/name field (e.g., "title", "name", "username")
+TITLE_COLUMN = "title"
+
+# Additional columns to display in the table (optional)
+# These will be shown in the info panel when a row is selected
+# Example: ["description", "price", "category"] or ["email", "full_name"]
+ADDITIONAL_DISPLAY_COLUMNS = ["listing_url"]
+
+# Label for the entity being managed (e.g., "Property", "User", "Product")
+# This will be used in UI labels and messages
+ENTITY_LABEL = "Property"
+ENTITY_LABEL_PLURAL = "Properties"
 
 # Image Validation Configuration
 IMAGE_CHECK_TIMEOUT = 3  # seconds
