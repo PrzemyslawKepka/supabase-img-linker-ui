@@ -141,18 +141,24 @@ class UICallbacks:
         image_url_label = self.image_url_column.replace("_", " ").title()
 
         status_text = "OK" if status else "Error/Missing"
-        info = f"""
-        **{id_label}:** {full_row.get(self.id_column, "N/A")}  
-        **{title_label}:** {full_row.get(self.title_column, "N/A")}  
-        **Current {image_url_label}:** {full_row.get(self.image_url_column, "None")}  
-        """
+
+        # Build info with proper line breaks
+        info_lines = [
+            f"**{id_label}:** {full_row.get(self.id_column, 'N/A')}",
+            f"**{title_label}:** {full_row.get(self.title_column, 'N/A')}",
+            f"**Current {image_url_label}:** {full_row.get(self.image_url_column, 'None')}",
+        ]
 
         # Add additional columns if configured
         for col in self.additional_columns:
             col_label = col.replace("_", " ").title()
-            info += f"**{col_label}:** {full_row.get(col, 'None')}\n"
+            info_lines.append(f"**{col_label}:** {full_row.get(col, 'None')}")
 
-        info += f"\n**Status:** {status_text}"
+        # Add status
+        info_lines.append(f"**Status:** {status_text}")
+
+        # Join with double spaces and newlines for proper markdown formatting
+        info = "  \n".join(info_lines)
 
         self.ui.selected_record_info.object = info
 
