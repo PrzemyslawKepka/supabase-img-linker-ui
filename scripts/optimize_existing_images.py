@@ -11,9 +11,9 @@ Options:
 """
 
 import argparse
-import os
 import sys
 from io import BytesIO
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -21,15 +21,37 @@ from dotenv import load_dotenv
 from PIL import Image, ImageOps
 from supabase import Client, create_client
 
+# Add parent directory to path to import from constants
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from constants.config import (
+    DATA_TABLE,
+    ENTITY_LABEL,
+    ENTITY_LABEL_PLURAL,
+    ID_COLUMN,
+    IMAGE_MAX_DIMENSION,
+    IMAGE_QUALITY,
+    IMAGE_URL_COLUMN,
+    SIGNED_URL_EXPIRY_YEARS,
+    STORAGE_BUCKET,
+    SUPABASE_KEY,
+    SUPABASE_URL,
+    TITLE_COLUMN,
+)
+
 # Load environment variables
 load_dotenv()
 
 
 class SimpleImageOptimizer:
-    """Standalone image optimizer that doesn't depend on config."""
+    """Standalone image optimizer using configuration from constants."""
 
     @staticmethod
-    def optimize_image(image_data: bytes, max_dimension: int = 1920, quality: int = 85):
+    def optimize_image(
+        image_data: bytes,
+        max_dimension: int = IMAGE_MAX_DIMENSION,
+        quality: int = IMAGE_QUALITY,
+    ):
         """Optimize an image."""
         img = Image.open(BytesIO(image_data))
 
@@ -70,13 +92,12 @@ class SimpleImageOptimizer:
         }
 
 
-def create_property_filename(property_id: int, property_title: str, ext: str) -> str:
-    """Create a standardized filename for a property image."""
-    safe_title = "".join(
-        c if c.isalnum() or c in " -_" else "_" for c in property_title
-    )
+def create_record_filename(record_id: int, record_title: str, ext: str) -> str:
+    """Create a standardized filename for a record image."""
+    safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in record_title)
     safe_title = safe_title.replace(" ", "_").lower()[:50]
-    return f"property_{property_id}_{safe_title}{ext}"
+    entity_prefix = ENTITY_LABEL.lower().replace(" ", "_")
+    return f"{entity_prefix}_{record_id}_{safe_title}{ext}"
 
 
 def optimize_existing_images(dry_run: bool = False, limit: int = None):
@@ -90,27 +111,23 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
 
     # Initialize Supabase client
     print("Initializing Supabase connection...")
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
-    storage_bucket = os.getenv("STORAGE_BUCKET", "property-images")
-    data_table = "properties_CM_pub"
 
-    if not supabase_url or not supabase_key:
+    if not SUPABASE_URL or not SUPABASE_KEY:
         print("❌ Error: SUPABASE_URL and SUPABASE_KEY must be set in .env file")
         return
 
-    client: Client = create_client(supabase_url, supabase_key)
+    client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     optimizer = SimpleImageOptimizer()
 
-    # Fetch all properties
-    print("Fetching properties from database...")
-    response = client.table(data_table).select("*").execute()
+    # Fetch all records
+    print(f"Fetching {ENTITY_LABEL_PLURAL.lower()} from database...")
+    response = client.table(DATA_TABLE).select("*").execute()
     df = pd.DataFrame(response.data)
-    print(f"Found {len(df)} total properties")
+    print(f"Found {len(df)} total {ENTITY_LABEL_PLURAL.lower()}")
 
-    # Filter only properties with image URLs
-    df_with_images = df[df["image_url"].notna() & (df["image_url"] != "")]
-    print(f"Found {len(df_with_images)} properties with images")
+    # Filter only records with image URLs
+    df_with_images = df[df[IMAGE_URL_COLUMN].notna() & (df[IMAGE_URL_COLUMN] != "")]
+    print(f"Found {len(df_with_images)} {ENTITY_LABEL_PLURAL.lower()} with images")
 
     if limit:
         df_with_images = df_with_images.head(limit)
@@ -128,12 +145,12 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
     print("=" * 60 + "\n")
 
     for idx, (_, row) in enumerate(df_with_images.iterrows(), 1):
-        property_id = row["id"]
-        property_title = row["title"]
-        image_url = row["image_url"]
+        record_id = row[ID_COLUMN]
+        record_title = row[TITLE_COLUMN]
+        image_url = row[IMAGE_URL_COLUMN]
 
-        print(f"[{idx}/{total}] Processing Property ID: {property_id}")
-        print(f"  Title: {property_title}")
+        print(f"[{idx}/{total}] Processing {ENTITY_LABEL} ID: {record_id}")
+        print(f"  Title: {record_title}")
         print(f"  Current URL: {image_url[:80]}...")
 
         try:
@@ -170,8 +187,8 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
             if not dry_run:
                 # Upload optimized image
                 print("  → Uploading optimized image...")
-                filename = create_property_filename(property_id, property_title, ".jpg")
-                bucket = client.storage.from_(storage_bucket)
+                filename = create_record_filename(record_id, record_title, ".jpg")
+                bucket = client.storage.from_(STORAGE_BUCKET)
                 bucket.upload(
                     path=filename,
                     file=optimized_data,
@@ -179,7 +196,7 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
                 )
 
                 # Get new signed URL
-                expiry_seconds = 60 * 60 * 24 * 365 * 10
+                expiry_seconds = 60 * 60 * 24 * 365 * SIGNED_URL_EXPIRY_YEARS
                 signed_url_resp = bucket.create_signed_url(filename, expiry_seconds)
                 if isinstance(signed_url_resp, dict) and "signedURL" in signed_url_resp:
                     new_signed_url = signed_url_resp["signedURL"]
@@ -187,8 +204,8 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
                     new_signed_url = signed_url_resp.signedURL
 
                 # Update database
-                client.table(data_table).update({"image_url": new_signed_url}).eq(
-                    "id", property_id
+                client.table(DATA_TABLE).update({IMAGE_URL_COLUMN: new_signed_url}).eq(
+                    ID_COLUMN, record_id
                 ).execute()
                 print("  ✅ Successfully optimized and uploaded!")
             else:
@@ -202,13 +219,13 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
             print(f"  ❌ Error: {e}")
             failed_count += 1
 
-        print()  # Blank line between properties
+        print()  # Blank line between records
 
     # Print summary
     print("=" * 60)
     print("OPTIMIZATION SUMMARY")
     print("=" * 60)
-    print(f"Total properties processed: {total}")
+    print(f"Total {ENTITY_LABEL_PLURAL.lower()} processed: {total}")
     print(f"Successfully optimized: {optimized_count}")
     print(f"Failed: {failed_count}")
     print(f"Skipped (already optimal): {total - optimized_count - failed_count}")
