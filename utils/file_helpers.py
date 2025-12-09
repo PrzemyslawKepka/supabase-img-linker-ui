@@ -58,13 +58,18 @@ def get_content_type(filename: str, default: str = "image/jpeg") -> str:
     Determine content type based on file extension.
 
     Args:
-        filename: The filename or extension
+        filename: The filename or extension (e.g., 'image.png' or '.png')
         default: Default content type if extension is unknown
 
     Returns:
         MIME type string (e.g., 'image/jpeg')
     """
-    ext = os.path.splitext(filename)[1].lower()
+    # If input is already just an extension (starts with dot), use it directly
+    # Otherwise extract extension from filename
+    if filename.startswith(".") and "/" not in filename and "\\" not in filename:
+        ext = filename.lower()
+    else:
+        ext = os.path.splitext(filename)[1].lower()
 
     content_type_map = {
         ".jpg": "image/jpeg",
