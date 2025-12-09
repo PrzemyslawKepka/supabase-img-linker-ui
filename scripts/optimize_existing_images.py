@@ -172,7 +172,12 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
             print("  → Optimizing...")
             optimized_data, optimized_format = optimizer.optimize_image(original_data)
             optimized_size_kb = len(optimized_data) / 1024
-            compression_ratio = (1 - optimized_size_kb / original_size_kb) * 100
+
+            # Calculate compression ratio (with zero-division protection)
+            if original_size_kb > 0:
+                compression_ratio = (1 - optimized_size_kb / original_size_kb) * 100
+            else:
+                compression_ratio = 0
 
             print(
                 f"  → Optimized: {optimized_size_kb:.1f}KB "
