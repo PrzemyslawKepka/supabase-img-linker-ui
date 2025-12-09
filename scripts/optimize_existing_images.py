@@ -29,6 +29,7 @@ from constants.config import (
     ENTITY_LABEL,
     ENTITY_LABEL_PLURAL,
     ID_COLUMN,
+    IMAGE_DOWNLOAD_TIMEOUT,
     IMAGE_MAX_DIMENSION,
     IMAGE_QUALITY,
     IMAGE_URL_COLUMN,
@@ -156,7 +157,7 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
         try:
             # Download current image
             print("  → Downloading image...")
-            response = requests.get(image_url, timeout=10)
+            response = requests.get(image_url, timeout=IMAGE_DOWNLOAD_TIMEOUT)
             response.raise_for_status()
             original_data = response.content
             original_size_kb = len(original_data) / 1024

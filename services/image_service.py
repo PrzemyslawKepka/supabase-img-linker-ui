@@ -7,7 +7,7 @@ import requests
 
 from constants.config import (
     ENABLE_IMAGE_OPTIMIZATION,
-    IMAGE_CHECK_TIMEOUT,
+    IMAGE_DOWNLOAD_TIMEOUT,
     SIGNED_URL_EXPIRY_YEARS,
 )
 from services.database_service import DatabaseService
@@ -131,7 +131,7 @@ class ImageService:
         """
         try:
             # Download the image
-            response = requests.get(image_url, timeout=IMAGE_CHECK_TIMEOUT)
+            response = requests.get(image_url, timeout=IMAGE_DOWNLOAD_TIMEOUT)
             response.raise_for_status()
             image_data = response.content
 

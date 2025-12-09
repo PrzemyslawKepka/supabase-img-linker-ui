@@ -45,8 +45,11 @@ ENTITY_LABEL = "Property"
 ENTITY_LABEL_PLURAL = "Properties"
 
 # Image Validation Configuration
-IMAGE_CHECK_TIMEOUT = 3  # seconds
+IMAGE_CHECK_TIMEOUT = 3  # seconds (for HEAD requests to validate URLs)
 IMAGE_CHECK_MAX_WORKERS = 10
+
+# Image Download Configuration
+IMAGE_DOWNLOAD_TIMEOUT = 10  # seconds (for downloading full images from URLs)
 
 # Image Optimization Configuration
 IMAGE_MAX_DIMENSION = 1920  # Max width/height for full images (1920px for HD)
