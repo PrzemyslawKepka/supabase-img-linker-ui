@@ -118,9 +118,16 @@ def optimize_existing_images(dry_run: bool = False, limit: int = None):
     df = pd.DataFrame(response.data)
     print(f"Found {len(df)} total {ENTITY_LABEL_PLURAL.lower()}")
 
-    # Filter only records with image URLs
-    df_with_images = df[df[IMAGE_URL_COLUMN].notna() & (df[IMAGE_URL_COLUMN] != "")]
-    print(f"Found {len(df_with_images)} {ENTITY_LABEL_PLURAL.lower()} with images")
+    # Filter only records with image URLs and valid titles
+    df_with_images = df[
+        df[IMAGE_URL_COLUMN].notna()
+        & (df[IMAGE_URL_COLUMN] != "")
+        & df[TITLE_COLUMN].notna()
+        & (df[TITLE_COLUMN] != "")
+    ]
+    print(
+        f"Found {len(df_with_images)} {ENTITY_LABEL_PLURAL.lower()} with images and valid titles"
+    )
 
     if limit:
         df_with_images = df_with_images.head(limit)

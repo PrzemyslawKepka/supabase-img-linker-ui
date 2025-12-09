@@ -17,8 +17,15 @@ def sanitize_filename(text: str) -> str:
     Returns:
         Sanitized string safe for filenames
     """
+    # Handle None or empty text
+    if not text or text is None:
+        return "untitled"
+
     safe_text = "".join([c for c in text if c.isalnum() or c in (" ", "-", "_")])
-    return safe_text.strip().replace(" ", "_")
+    sanitized = safe_text.strip().replace(" ", "_")
+
+    # Return default if result is empty after sanitization
+    return sanitized if sanitized else "untitled"
 
 
 def create_record_filename(
