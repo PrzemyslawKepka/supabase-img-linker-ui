@@ -50,6 +50,10 @@ class ImageService:
         """
         import os
 
+        # Validate file data is not empty
+        if not file_data or len(file_data) == 0:
+            raise ValueError("File data is empty or corrupt")
+
         # Optimize image if enabled
         if ENABLE_IMAGE_OPTIMIZATION:
             try:
@@ -61,9 +65,12 @@ class ImageService:
                     file_data
                 )
 
-                # Calculate compression ratio
+                # Calculate compression ratio (with zero-division protection)
                 optimized_size = len(optimized_data) / 1024  # KB
-                compression_ratio = (1 - optimized_size / original_size) * 100
+                if original_size > 0:
+                    compression_ratio = (1 - optimized_size / original_size) * 100
+                else:
+                    compression_ratio = 0
 
                 # Log optimization results
                 import panel as pn
@@ -128,6 +135,10 @@ class ImageService:
             response.raise_for_status()
             image_data = response.content
 
+            # Validate image data is not empty
+            if not image_data or len(image_data) == 0:
+                raise ValueError("Downloaded image is empty or URL returned no content")
+
             # Optimize image if enabled
             if ENABLE_IMAGE_OPTIMIZATION:
                 try:
@@ -139,9 +150,12 @@ class ImageService:
                         image_data
                     )
 
-                    # Calculate compression ratio
+                    # Calculate compression ratio (with zero-division protection)
                     optimized_size = len(optimized_data) / 1024  # KB
-                    compression_ratio = (1 - optimized_size / original_size) * 100
+                    if original_size > 0:
+                        compression_ratio = (1 - optimized_size / original_size) * 100
+                    else:
+                        compression_ratio = 0
 
                     # Log optimization results
                     import panel as pn
