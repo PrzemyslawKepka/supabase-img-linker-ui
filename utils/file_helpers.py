@@ -21,7 +21,9 @@ def sanitize_filename(text: str) -> str:
     return safe_text.strip().replace(" ", "_")
 
 
-def create_record_filename(record_id: int, title: str, extension: str) -> str:
+def create_record_filename(
+    record_id: int, title: str, extension: str, max_length: int = 50
+) -> str:
     """
     Create a standardized filename for record images.
 
@@ -29,11 +31,19 @@ def create_record_filename(record_id: int, title: str, extension: str) -> str:
         record_id: The record ID
         title: The record title/name
         extension: File extension (should include the dot, e.g., '.jpg')
+        max_length: Maximum length for the title portion (default: 50 chars)
 
     Returns:
         Formatted filename: {id}_{sanitized_title}{extension}
+
+    Note:
+        The title is truncated to max_length characters to prevent excessively
+        long filenames while maintaining readability.
     """
     safe_title = sanitize_filename(title)
+    # Truncate title to prevent excessively long filenames
+    if len(safe_title) > max_length:
+        safe_title = safe_title[:max_length].rstrip("_")
     return f"{record_id}_{safe_title}{extension}"
 
 

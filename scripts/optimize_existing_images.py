@@ -38,6 +38,7 @@ from constants.config import (
     SUPABASE_URL,
     TITLE_COLUMN,
 )
+from utils.file_helpers import create_record_filename
 
 # Load environment variables
 load_dotenv()
@@ -90,14 +91,6 @@ class SimpleImageOptimizer:
             "mode": img.mode,
             "size_bytes": len(image_data),
         }
-
-
-def create_record_filename(record_id: int, record_title: str, ext: str) -> str:
-    """Create a standardized filename for a record image."""
-    safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in record_title)
-    safe_title = safe_title.replace(" ", "_").lower()[:50]
-    entity_prefix = ENTITY_LABEL.lower().replace(" ", "_")
-    return f"{entity_prefix}_{record_id}_{safe_title}{ext}"
 
 
 def optimize_existing_images(dry_run: bool = False, limit: int = None):
