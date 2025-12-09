@@ -5,7 +5,11 @@ Handles image upload, URL fetching, and image processing operations.
 
 import requests
 
-from constants.config import ENABLE_IMAGE_OPTIMIZATION, SIGNED_URL_EXPIRY_YEARS
+from constants.config import (
+    ENABLE_IMAGE_OPTIMIZATION,
+    IMAGE_CHECK_TIMEOUT,
+    SIGNED_URL_EXPIRY_YEARS,
+)
 from services.database_service import DatabaseService
 from utils.file_helpers import (
     create_record_filename,
@@ -120,7 +124,7 @@ class ImageService:
         """
         try:
             # Download the image
-            response = requests.get(image_url)
+            response = requests.get(image_url, timeout=IMAGE_CHECK_TIMEOUT)
             response.raise_for_status()
             image_data = response.content
 
