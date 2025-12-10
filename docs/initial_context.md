@@ -1,3 +1,4 @@
+
 In property-map folder there is my project added, hosted currently
 as cm-rentals.com
 It basically reads a table from Supabase database and displays properties on the map, including dispaying their images - it's an app in Streamlit Framework
