@@ -2,6 +2,10 @@
 
 A general-purpose Panel web application for managing images in any Supabase database table. Upload, replace, and manage images for your database records with automatic optimization and validation.
 
+![Tech stack: Python + Panel + Supabase](images/tech_stack.png)
+
+*Diagram generated with [Tekyous](https://tekyous.dev/builder?utm_source=mcp&utm_medium=readme#doc=v1.dVLBTsMwDP2VyKdNtEhcK3GA26QdBtNOaAe3dUO0NIkSd2Ka9u84LWMFwSmKnff8_F7O0HjnqGEfE1RvZ-ii76GCcOJ376AAizVZKURyLcmbAtjnPjopX4r_AYy1JdUio7pTpkdNKskUOa8caQhYYyK47AtoTRQVRigqsNRxyb6MRr8z5F4KFk9QnSFESsQZbPpgBVpA52OPucR0OPkhla1BHbEXoI5-CNNejbc-yqOj8ZYyqWnlpsvBZDmGhauC3WrU5u2ESXbQt133edsrDfUU0bY3HgxhRvQUglpsRkuWf1JObv3kbKnDwc601dgcxPYZ7_Ot8pty5mb203mmqe8I47wvWPrIfm2_KupRbXxiHWn7slZTbospsd3rOi0lv-2UnKoHmc_XbmcspeX9mB-T5IGcRUpUFGku-3vSasStjTtQVKPbR_lUY-oPl08) — open the link to view or edit the diagram interactively.*
+
 ## Problem Definition
 
 A common approach for managing images in an application is to use a database table with a **dedicated column for the image address (URL)**, which is later referenced throughout the app. The images may be stored in a dedicated storage solution (recommended approach), or theoretically could come from a third-party source (not recommended). In any case, linking and managing URLs in the table comes with several **pain points**:
